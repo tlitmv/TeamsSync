@@ -37,7 +37,7 @@ If ( $OSCaption -like "*Windows 10*") {
     Write-Output "Starting the Windows Update Service to install the RSAT Tools "
     Start-Process -FilePath wusa.exe -ArgumentList "$Destination /quiet /norestart /log:$LogFile" -Verbose -NoNewWindow
     do {
-        Write-Output '.'
+        Write-Host '.' -NoNewline
         Start-Sleep -Seconds 3
     } until (Get-HotFix -Id KB2693643 -ErrorAction SilentlyContinue)
 
