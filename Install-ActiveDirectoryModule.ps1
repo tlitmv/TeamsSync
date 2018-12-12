@@ -11,7 +11,14 @@ $OSCaption = (Get-CimInstance Win32_OperatingSystem).Caption
 $OSBuild = ([System.Environment]::OSVersion.Version).Build
 $Architecture = $env:PROCESSOR_ARCHITECTURE
 
-If ( $OSCaption -like "*Windows 10*") {
+if($OSCaption -like "*Windows Server*") {
+    Import-Module ServerManager
+    Install-WindowsFeature RSAT-AD-PowerShell
+
+    # Install the help
+    Update-Help -Module ActiveDirectory -Verbose -Force
+}
+elseif ( $OSCaption -like "*Windows 10*") {
     switch($OSBuild) {
         '16299' {
             switch($Architecture) {

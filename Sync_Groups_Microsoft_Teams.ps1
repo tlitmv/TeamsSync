@@ -12,12 +12,12 @@ function Confirm-Module ($Module) {
         } else {
             # If module is not imported, not available on disk, but is in online gallery then install and import
             if (Find-Module -Name $Module | Where-Object {$_.Name -eq $Module}) {
-                Install-Module -Name $m -Force -Verbose -Scope CurrentUser
-                Import-Module $m -Verbose
+                Install-Module -Name $Module -Force -Verbose -Scope CurrentUser
+                Import-Module $Module -Verbose
             } else {
                 # If module is not imported, not available and not in online gallery then abort
-                write-host "Module $m not imported, not available and not in online gallery, exiting."
-                EXIT 1
+                write-host "Module $Module not imported, not available and not in online gallery, exiting."
+                exit 1
             }
         }
     }
