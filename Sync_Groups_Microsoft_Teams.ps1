@@ -2,49 +2,58 @@
 # Author: Antoon Bouw  #
 
 # First let's check for prerequisites #
+function Confirm-Module ($Module) {
+    # If module is imported say that and do nothing
+    if (Get-Module | Where-Object {$_.Name -eq $Module}) {
+    } else {
+        # If module is not imported, but available on disk then import
+        if (Get-Module -ListAvailable | Where-Object {$_.Name -eq $Module}) {
+            Import-Module $Module -Verbose
+        } else {
+            # If module is not imported, not available on disk, but is in online gallery then install and import
+            if (Find-Module -Name $Module | Where-Object {$_.Name -eq $Module}) {
+                Install-Module -Name $m -Force -Verbose -Scope CurrentUser
+                Import-Module $m -Verbose
+            } else {
+                # If module is not imported, not available and not in online gallery then abort
+                write-host "Module $m not imported, not available and not in online gallery, exiting."
+                EXIT 1
+            }
+        }
+    }
+}
 
 ## 1: NuGet (needed for installing the Teams module)
-$nuget = Get-PackageProvider -name nuget -force
+$NuGetProvider = Get-PackageProvider -Name NuGet -Force
 
-if ($nuget.version -lt "2.8.5.201")
-    {
-        install-packageprovider -name nuget -minimumversion 2.8.5.201 -force -scope currentuser
-    }
-else
-    {
-        write-output "The right version of NuGet is installed"
-    }
+if ($NuGetProvider.version -lt "2.8.5.201") {
+	Write-Output "Installing NuGet..."
+	Install-PackageProvider -Name NuGet -Scope AllUsers -Force
+	$NuGetProvider = Get-PackageProvider -Name NuGet -Force
+	Write-Output "Finished installing NuGet."
+	Write-Output "NuGet Version: " + $NuGetModule.version
+}
 
 ## 2: The Powershell Module for Teams
 $TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
 
-if ($TeamsModule -eq $null)
-{
-    install-module microsoftteams -Scope CurrentUser -Force 
-}
-else
-{
-    write-output "Teams module is installed"
+if ($null -eq $TeamsModule) {
+    Install-Module MicrosoftTeams -Scope AllUsers -Force 
 }
 
 ## 3: Active Directory Powershell Module
 
 ## This one is a prerequisite and should be installed at all time. Make sure you use the prereq.ps1 file to install all neccesary functions
 
-$ADPowershell = get-windowsfeature -name rsat-ad-powershell
+$ADPowershell = Get-WindowsFeature -Name rsat-ad-powershell
 
-if ($ADPowershell.Installstate -eq "Installed")
-{
-    write-output "The AD Powershell cmdlets are installed."
-}
-else
-{
+if ($ADPowershell.Installstate -ne "Installed") {
     Write-Output "The Active Directory Powershell Module is not installed and cannot be installed automatically by this script."`n"Please Install Manually"
     exit 1
 }
 
 # Let's get going #
-import-module activedirectory
+Import-Module ActiveDirectory
 $teams = import-csv Teams.csv -Header AD_Group,MS_Team
 $username = get-content UPN.txt
 $password = get-content cred.txt | convertto-securestring
