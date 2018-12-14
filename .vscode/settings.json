@@ -1,0 +1,4 @@
+{
+    "powershell.developer.powerShellExePath": "%SystemRoot%\\system32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "powershell.powerShellExePath": "%SystemRoot%\\system32\\WindowsPowerShell\\v1.0\\powershell.exe"
+}
