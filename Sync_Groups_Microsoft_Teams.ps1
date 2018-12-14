@@ -2,6 +2,11 @@
 # Author: Antoon Bouw  #
 
 # First let's check for prerequisites #
+Param (
+	[Parameter(Mandatory=$True)]
+	[ValidateSet('AddToActiveDirectory', 'RemoveFromTeam')]
+    [string] $MissingFromActiveDirctory
+)
 
 ## 1: NuGet (needed for installing the Teams module)
 $NuGetProvider = Get-PackageProvider -Name NuGet -Force
@@ -36,27 +41,29 @@ $Credentials = New-Object -TypeName System.Management.Automation.PSCredential -A
 Connect-MicrosoftTeams -Credential $Credentials
 
 foreach ($Item in $ADGroupToTeamMap) {
-	# Get Active Directory group.
-	$ADGroup = Get-ADGroup $Item.AD_Group | Get-ADGroupMember | Get-ADUser | Select-Object UserPrincipalName
+	# Get Active Directory group and members.
+	$ADGroup = Get-ADGroup $Item.AD_Group
+	$ADGroupMembers = $ADGroup | Get-ADGroupMember | Get-ADUser | Select-Object UserPrincipalName
 	
 	# Check to see if Active Directory group maps to a Team.
-	if ($null -eq (Get-Team | Where-Object {$_.DisplayName -like $Item.MS_Team})) {
-		Write-Host "Team: " $Team.MS_Team " does not exist or Service Account is not owner"
+	$Team = Get-Team | Where-Object {$_.DisplayName -like $Item.MS_Team}
+	if ($null -eq $Team) {
+		Write-Host "Team: " $Item.MS_Team " does not exist or Service Account is not owner"
 		break	
 	}
     else {
 		# Get Team users
-		$Team = Get-TeamUser -GroupId $TeamInfo.groupid
+		$TeamUsers = Get-TeamUser -GroupId $Team.GroupId
 
 		# Gather a list of Active Directory users that do not belong to the Team
 	    $ADOnlyUsers = try {
-			Compare-Object -DifferenceObject $ADGroup.UserPrincipalName -ReferenceObject $Team.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
-		} catch { Write-Host "Please add members to group " $team.AD_Group ". Please make sure the owner is one of them." }
+			Compare-Object -DifferenceObject $ADGroupMembers.UserPrincipalName -ReferenceObject $TeamUsers.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
+		} catch { Write-Host "Please add members to group " $ADGroup.Name ". Please make sure the owner is one of them." }
 
 		# Add missing Active Directory users to Team
 	    foreach ($ADOnlyUser in $ADOnlyUsers) {
 			Write-Host "Adding User " $ADOnlyUser.InputObject " to Team " $Team.DisplayName
-			Add-TeamUser -GroupId $Team.groupid -User $ADOnlyUser.InputObject
+			Add-TeamUser -GroupId $Team.GroupId -User $ADOnlyUser.InputObject
 		}
 
 		# Gather a list of Team users that do not belong to the Active Directory group
@@ -65,11 +72,18 @@ foreach ($Item in $ADGroupToTeamMap) {
 		} catch {}
 
 		# Remove Team users that do not belong to the Active Directory group
-	    foreach ($TeamOnlyUser in $TeamOnlyUsers) {
-			Write-Host "Removing User " $TeamOnlyUser.InputObject " from Team " $Team.DisplayName
-			$TeamUserInfo = Get-TeamUser -GroupId $TeamInfo.groupid | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
-			if ($TeamUserInfo.Role -eq "Owner") { break }
-			Remove-TeamUser -GroupId $TeamInfo.groupid -User $TeamOnlyUser.InputObject
+		if ($MissingFromActiveDirctory -eq "RemoveFromTeam") {
+	    	foreach ($TeamOnlyUser in $TeamOnlyUsers) {
+				Write-Host "Removing User " $TeamOnlyUser.InputObject " from Team " $Team.DisplayName
+				$TeamUserInfo = Get-TeamUser -GroupId $TeamInfo.groupid | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
+				if ($TeamUserInfo.Role -eq "Owner") { break }
+				Remove-TeamUser -GroupId $TeamInfo.groupid -User $TeamOnlyUser.InputObject
+			}
+		}
+		elseif ($MissingFromActiveDirctory -eq "AddToActiveDirectory") {
+			foreach ($TeamOnlyUser in $TeamOnlyUsers) {
+				Write-Host "Adding User " $TeamOnlyUser.InputObject " to Active Directory group " $True
+			}
 		}
 	}
 }
