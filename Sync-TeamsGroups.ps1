@@ -9,7 +9,7 @@ Param (
 )
 
 # See if credentials have been created.
-if ((Test-Path .\upn.txt -PathType Leaf -eq $False) -or (Test-Path .\cred.txt -PathType Leaf -eq $False)) {
+if (((Test-Path .\upn.txt -PathType Leaf) -eq $false) -or ((Test-Path .\cred.txt -PathType Leaf) -eq $false)) {
 	Write-Host ""
 	Write-Host "Error: Please run Set-SecureTeamUserInfo.ps1 before running this script."
 	Write-Host ""
