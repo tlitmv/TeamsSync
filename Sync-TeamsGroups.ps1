@@ -25,6 +25,10 @@ if ($NuGetProvider.version -lt "2.8.5.201") {
 	Write-Output "Installing NuGet..."
 	Install-PackageProvider -Name NuGet -Scope AllUsers -Force
 	$NuGetProvider = Get-PackageProvider -Name NuGet -Force
+	if($null -eq $NuGetProvider) {
+		# Failed to install NuGet.
+		exit 1
+	}
 	Write-Output "Finished installing NuGet."
 	Write-Output "NuGet Version: " + $NuGetModule.version
 }
@@ -32,7 +36,12 @@ if ($NuGetProvider.version -lt "2.8.5.201") {
 ## 2: The Powershell Module for Teams
 $TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
 if ($null -eq $TeamsModule) {
-    Install-Module MicrosoftTeams -Scope AllUsers -Force 
+	Install-Module MicrosoftTeams -Scope AllUsers -Force
+	$TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
+	if($null -eq $TeamsModule) {
+		# Failed to install Teams module.
+		exit 1
+	}
 }
 
 ## 3: Active Directory Powershell Module
