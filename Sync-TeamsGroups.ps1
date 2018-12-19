@@ -62,7 +62,9 @@ foreach ($Item in $ADGroupToTeamMap) {
 	# Get Active Directory group and members.
 	$ADGroup = Get-ADGroup $Item.AD_Group
 	$ADGroupMembers = $ADGroup | Get-ADGroupMember | Get-ADUser | Select-Object UserPrincipalName
-	
+	Write-Host $ADGroup
+	Write-Host $ADGroupMembers
+
 	# Check to see if Active Directory group maps to a Team.
 	$Team = Get-Team | Where-Object {$_.DisplayName -like $Item.MS_Team}
 	if ($null -eq $Team) {
