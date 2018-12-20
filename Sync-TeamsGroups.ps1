@@ -7,13 +7,9 @@ Param (
 )
 
 # Set module variables
-Set-UpnFile -File ".\upn.txt"
+Set-UsernameFile -File ".\upn.txt"
 Set-PwdFile -File ".\pwd.txt"
-
-# See if credentials have been created.
-if (-not (Assert-Office365CredentialsExist -UPNFile $UPNFile -PwdFile $PwdFile)) {
-    Install-Office365Credentials
-}
+Set-MapFile -File ".\teams.csv"
 
 ## 1: NuGet (needed for installing the Teams module)
 $NuGetProvider = Get-PackageProvider -Name NuGet -Force
@@ -30,14 +26,20 @@ if ($NuGetProvider.version -lt "2.8.5.201") {
 }
 
 # Make sure Microsoft Teams module is installed
-if (-not (Assert-TeamModuleExists)) {
-    Write-Host "Critical Error: Unable to install Microsoft Teams module"
+if (-not (Assert-TeamsModuleExists)) {
+    Write-Host "Critical Error: Unable to install Microsoft Teams module."
     exit 1
 }
 
 # Make sure Microsoft Active Directory module is installed
 if (-not (Assert-ActiveDirectoryModuleInstalled)) {
-    Write-Host "Critical Error: Unable to install Active Directory module"
+    Write-Host "Critical Error: Unable to install Active Directory module."
+    exit 1
+}
+
+# Make sure Office 365 credentials are stored
+if(-not (Assert-Office365CredentialsExist)) {
+    Write-Host "Critical Error: Unable to store Office 365 credentials."
     exit 1
 }
 

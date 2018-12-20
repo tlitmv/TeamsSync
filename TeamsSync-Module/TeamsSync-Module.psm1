@@ -29,7 +29,7 @@ function Assert-FilesSet {
 function Assert-Office365CredentialsExist {
     if (Assert-FilesSet) {
         if ((-not (Test-Path $Script:UsernameFile -PathType Leaf)) -or (-not (Test-Path $Script:PwdFile -PathType Leaf))) {
-            return $false
+            Install-Office365Credentials
         }
         return $true;
     }
@@ -41,9 +41,7 @@ function Assert-Office365CredentialsExist {
 function Assert-TeamsModuleExists {
     if ($null -eq (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
         Install-Module MicrosoftTeams -Scope AllUsers -Force
-        $TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
-        if ($null -eq $TeamsModule) {
-            # Failed to install Teams module.
+        if ($null -eq (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
             return $false
         }
         else {
@@ -114,7 +112,7 @@ function New-TeamFromOffice365Group {
     if (-not (Assert-TeamsConnected)) {
         Import-TeamsSession
     }
-    if(-not (Assert-Office365Connected)) {
+    if (-not (Assert-Office365Connected)) {
         Import-Office365Session
     }
     $Group = Get-UnifiedGroup -Identity $Email
