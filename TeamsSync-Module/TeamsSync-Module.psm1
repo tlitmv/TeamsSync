@@ -114,8 +114,9 @@ function New-TeamFromOffice365Group {
     if (-not (Assert-TeamsConnected)) {
         Import-TeamsSession
     }
-    $Group = Get-Group -Identity $Email
-    New-Team -Group $Email
+    $Group = Get-UnifiedGroup -Identity $Email
+    $Guid = $Group.Name.Substring("_")[1]
+    New-Team -Group $Guid
 }
 
 function New-Office365Group {
@@ -131,7 +132,7 @@ function New-Office365Group {
         Import-Office365Session
     }
     New-UnifiedGroup -AccessType Private -Alias $Alias -DisplayName $Name -Name $Name -PrimarySmtpAddress $Email -Owner $Script:Username -RequireSenderAuthenticationEnabled $true
-    Set-UnifiedGroup -Identity $Name -HiddenFromAddressListsEnabled $true
+    Set-UnifiedGroup -Identity $Name -HiddenFromAddressListsEnabled $false
 }
 
 function Install-Office365Credentials {
@@ -219,7 +220,7 @@ function Disconnect-TeamsSession {
 
 function Import-Office365Session {
     $Credential = Get-Office365Credentials
-    $Script:Office365Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://ps.outlook.com/powershell/ -Credential $Credential -Authentication Basic -AllowRedirection -Name "Office365Session"
+    $Script:Office365Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://ps.outlook.com/powershell/ -Credential $Credential -Authentication Basic -AllowRedirection
     Import-PSSession $Script:Office365Session
 }
 
