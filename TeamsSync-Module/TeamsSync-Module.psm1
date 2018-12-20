@@ -39,7 +39,7 @@ function Assert-Office365CredentialsExist {
 }
 
 function Assert-TeamsModuleExists {
-    if ($null = (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
+    if ($null -eq (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
         Install-Module MicrosoftTeams -Scope AllUsers -Force
         $TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
         if ($null -eq $TeamsModule) {
@@ -114,8 +114,11 @@ function New-TeamFromOffice365Group {
     if (-not (Assert-TeamsConnected)) {
         Import-TeamsSession
     }
+    if(-not (Assert-Office365Connected)) {
+        Import-Office365Session
+    }
     $Group = Get-UnifiedGroup -Identity $Email
-    $Guid = $Group.Name.Substring("_")[1]
+    $Guid = $Group.Name.Split("_")[1]
     New-Team -Group $Guid
 }
 
