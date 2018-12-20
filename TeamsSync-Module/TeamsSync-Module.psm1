@@ -14,11 +14,51 @@ function Set-PwdFile {
     $Script:PwdFile = $File
 }
 
+function Set-MapFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $File
+    )
+    $Script:MapFile = $File
+}
+
 function Assert-Office365CredentialsExist {
     if ((-not (Test-Path $Script:UsernameFile -PathType Leaf)) -or (-not (Test-Path $Script:PwdFile -PathType Leaf))) {
         return $false
     }
     return $true;
+}
+
+function Assert-TeamsModuleExists {
+    if ($null = (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
+        Install-Module MicrosoftTeams -Scope AllUsers -Force
+        $TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
+        if ($null -eq $TeamsModule) {
+            # Failed to install Teams module.
+            return $false
+        }
+        else {
+            return $true
+        }
+    }
+    else {
+        return $true
+    }
+}
+
+function Assert-ActiveDirectoryModuleInstalled {
+    $ActiveDirectoryModule = Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"}
+    if($null -eq $ActiveDirectoryModule) {
+        return Install-ActiveDirectoryModule
+    } else {
+        return $true
+    }
+}
+
+function Assert-Office365Connected {
+    Get-MsolDomain -ErrorAction SilentlyContinue | Out-Null
+    $result = $?
+    return $result
 }
 
 function Read-Office365Credentials {
@@ -35,23 +75,6 @@ function Get-Office365Credentials {
     }
     else {
         return $null
-    }
-}
-
-function Assert-TeamModuleExists {
-    if ($null = (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
-        Install-Module MicrosoftTeams -Scope AllUsers -Force
-        $TeamsModule = Get-Module -ListAvailable -Name MicrosoftTeams
-        if ($null -eq $TeamsModule) {
-            # Failed to install Teams module.
-            return $false
-        }
-        else {
-            return $true
-        }
-    }
-    else {
-        return $true
     }
 }
 
@@ -84,20 +107,6 @@ function Install-Office365Credentials {
     Read-Host -Prompt "Enter your password" -AsSecureString | ConvertFrom-SecureString | Out-File $Script:PwdFile
 }
 
-function Assert-ActiveDirectoryModuleInstalled {
-    if ((Get-WindowsFeature -Name RSAT-AD-PowerShel).Installstate -ne "Installed") {
-        Install-ActiveDirectoryModule
-        if (((Get-WindowsFeature -Name RSAT-AD-PowerShel).Installstate -ne "Installed")) {
-            Install-Module ActiveDirectory
-            return $true
-        }
-        else {
-            return $false
-        }
-    }
-    return $true
-}
-
 function Install-ActiveDirectoryModule {
     #Current RSAT Download Links for W10
     $w10b1709x86 = 'https://download.microsoft.com/download/1/D/8/1D8B5022-5477-4B9A-8104-6A71FF9D98AB/WindowsTH-RSAT_WS_1709-x86.msu'
@@ -116,6 +125,9 @@ function Install-ActiveDirectoryModule {
 
         # Install the help
         Update-Help -Module ActiveDirectory -Verbose -Force
+        if ((Get-WindowsOptionalFeature -Online -FeatureName RSATClient-Roles-AD-Powershell -ErrorAction SilentlyContinue).State -ne 'Enabled') {
+            Enable-WindowsOptionalFeature -Online -FeatureName RSATClient-Roles-AD-Powershell
+        }
     }
     elseif ( $OSCaption -like "*Windows 10*") {
         switch ($OSBuild) {
@@ -148,19 +160,11 @@ function Install-ActiveDirectoryModule {
         } until (Get-HotFix -Id KB2693643 -ErrorAction SilentlyContinue)
 
         # Double-check that the role is enabled after install.
-        if ((Get-WindowsOptionalFeature -Online -FeatureName RSATClient-Roles-AD-Powershell -ErrorAction SilentlyContinue).State -ne 'Enabled') {
-            Enable-WindowsOptionalFeature -Online -FeatureName RSATClient-Roles-AD-Powershell
-        }
 
         # Install the help
         Update-Help -Module ActiveDirectory -Verbose -Force
+        return ($null -ne (Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"}))
     }
-}
-
-function Assert-Office365Connected {
-    Get-MsolDomain -ErrorAction SilentlyContinue | Out-Null
-    $result = $?
-    return $result
 }
 
 function Import-Office365Session {
