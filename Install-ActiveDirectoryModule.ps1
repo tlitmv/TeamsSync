@@ -11,7 +11,7 @@ $OSCaption = (Get-CimInstance Win32_OperatingSystem).Caption
 $OSBuild = ([System.Environment]::OSVersion.Version).Build
 $Architecture = $env:PROCESSOR_ARCHITECTURE
 
-if($OSCaption -like "*Windows Server*") {
+if ($OSCaption -like "*Windows Server*") {
     Import-Module ServerManager
     Install-WindowsFeature RSAT-AD-PowerShell
 
@@ -19,15 +19,15 @@ if($OSCaption -like "*Windows Server*") {
     Update-Help -Module ActiveDirectory -Verbose -Force
 }
 elseif ( $OSCaption -like "*Windows 10*") {
-    switch($OSBuild) {
+    switch ($OSBuild) {
         '16299' {
-            switch($Architecture) {
+            switch ($Architecture) {
                 'x86' { $URL = $w10b1709x86 }
                 'AMD64' { $URL = $w10b1709x64 }
             }
         }
         '17134' { 
-            switch($Architecture) {
+            switch ($Architecture) {
                 'x86' { $URL = $w10b1803x86 }
                 'AMD64' { $URL = $w10b1803x64 }
             }
