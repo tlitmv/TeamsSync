@@ -1,10 +1,12 @@
-Import-Module .\TeamsSync-Module
-
 Param (
     [Parameter(Mandatory = $True)]
     [ValidateSet('AddToActiveDirectory', 'RemoveFromTeam')]
     [string] $MissingFromActiveDirctory
 )
+
+Import-Module .\TeamsSync-Module
+Import-Module ActiveDirectory
+Import-Module MicrosoftTeams
 
 # Set module variables
 Set-UsernameFile -File ".\upn.txt"
