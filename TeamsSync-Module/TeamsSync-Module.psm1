@@ -22,11 +22,20 @@ function Set-MapFile {
     $Script:MapFile = $File
 }
 
+function Assert-FilesSet {
+    return (($null -ne $Script:UsernameFile) -and ($null -ne $Script:PwdFile) -and ($null -ne $Script:MapFile))
+}
+
 function Assert-Office365CredentialsExist {
-    if ((-not (Test-Path $Script:UsernameFile -PathType Leaf)) -or (-not (Test-Path $Script:PwdFile -PathType Leaf))) {
+    if (Assert-FilesSet) {
+        if ((-not (Test-Path $Script:UsernameFile -PathType Leaf)) -or (-not (Test-Path $Script:PwdFile -PathType Leaf))) {
+            return $false
+        }
+        return $true;
+    }
+    else {
         return $false
     }
-    return $true;
 }
 
 function Assert-TeamsModuleExists {
@@ -48,9 +57,10 @@ function Assert-TeamsModuleExists {
 
 function Assert-ActiveDirectoryModuleInstalled {
     $ActiveDirectoryModule = Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"}
-    if($null -eq $ActiveDirectoryModule) {
+    if ($null -eq $ActiveDirectoryModule) {
         return Install-ActiveDirectoryModule
-    } else {
+    }
+    else {
         return $true
     }
 }
