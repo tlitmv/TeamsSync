@@ -15,7 +15,7 @@ function Set-PwdFile {
 }
 
 function Assert-Office365CredentialsExist {
-    if (((Test-Path $Script:UsernameFile -PathType Leaf) -eq $false) -or ((Test-Path $Script:PwdFile -PathType Leaf) -eq $false)) {
+    if ((-not (Test-Path $Script:UsernameFile -PathType Leaf)) -or (-not (Test-Path $Script:PwdFile -PathType Leaf))) {
         return $false
     }
     return $true;
@@ -27,7 +27,7 @@ function Read-Office365Credentials {
 }
 
 function Get-Office365Credentials {
-    if (Assert-CredentialsExist) {
+    if (Assert-Office365CredentialsExist) {
         if ($null -eq $Script:Username -or $null -eq $Script:Password) {
             Read-Office365Credentials
         }
@@ -60,6 +60,9 @@ function New-TeamFromOffice365Group {
         [Parameter(Mandatory = $true)]
         [string] $Email
     )
+    if (-not (Assert-TeamModuleExists)) {
+        Write-Host "Critical Error: Unable to install Microsoft Teams module."
+    }
     New-Team -Template $Email
 }
 
@@ -167,5 +170,5 @@ function Import-Office365Session {
 }
 
 function Disconnect-Office365Session {
-    Disconnect-PSSession -Session $Script:Office365Session
+    Remove-PSSession -Session $Script:Office365Session
 }

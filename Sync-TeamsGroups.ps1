@@ -11,7 +11,7 @@ Set-UpnFile -File ".\upn.txt"
 Set-PwdFile -File ".\pwd.txt"
 
 # See if credentials have been created.
-if ($false -eq (Assert-Office365CredentialsExist -UPNFile $UPNFile -PwdFile $PwdFile)) {
+if (-not (Assert-Office365CredentialsExist -UPNFile $UPNFile -PwdFile $PwdFile)) {
     Install-Office365Credentials
 }
 
@@ -30,13 +30,13 @@ if ($NuGetProvider.version -lt "2.8.5.201") {
 }
 
 # Make sure Microsoft Teams module is installed
-if ($false -eq (Assert-TeamModuleExists)) {
+if (-not (Assert-TeamModuleExists)) {
     Write-Host "Critical Error: Unable to install Microsoft Teams module"
     exit 1
 }
 
 # Make sure Microsoft Active Directory module is installed
-if ($false -eq (Assert-ActiveDirectoryModuleInstalled)) {
+if (-not (Assert-ActiveDirectoryModuleInstalled)) {
     Write-Host "Critical Error: Unable to install Active Directory module"
     exit 1
 }
