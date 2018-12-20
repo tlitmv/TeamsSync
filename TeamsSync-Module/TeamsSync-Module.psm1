@@ -40,9 +40,17 @@ function Assert-Office365CredentialsExist {
 
 function Assert-TeamsModuleExists {
     if ($null -eq (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
-        Install-Module MicrosoftTeams -Scope AllUsers -Force
+        Import-Module MicrosoftTeams
         if ($null -eq (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
-            return $false
+            Install-Module MicrosoftTeams -Scope AllUsers -Force -ErrorAction SilentlyContinue
+            Import-Module MicrosoftTeams
+            if ($null -eq (Get-Module | Where-Object {$_.Name -eq "MicrosoftTeams"})) {
+                return $false
+            }
+            else {
+                return $true
+            }
+
         }
         else {
             return $true
@@ -54,9 +62,11 @@ function Assert-TeamsModuleExists {
 }
 
 function Assert-ActiveDirectoryModuleInstalled {
-    $ActiveDirectoryModule = Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"}
-    if ($null -eq $ActiveDirectoryModule) {
-        return Install-ActiveDirectoryModule
+    if ($null -eq (Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"})) {
+        Import-Module ActiveDirectory
+        if ($null -eq (Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"})) {
+            return Install-ActiveDirectoryModule
+        }
     }
     else {
         return $true
@@ -231,4 +241,13 @@ function Get-Office365Session {
 
 function Disconnect-Office365Session {
     Remove-PSSession -Session $Script:Office365Session
+}
+
+function Read-MapFile {
+    if (Assert-FilesSet) {
+        if (Test-Path $Script:MapFile -PathType Leaf) {
+            $Script:MapContent = Import-Csv $Script:MapFile -Header ADGroup, MicrosoftTeam
+            return $Script:MapContent;
+        }
+    }
 }

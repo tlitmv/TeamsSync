@@ -46,17 +46,23 @@ if(-not (Assert-Office365CredentialsExist)) {
 # Let's get going #
 Connect-MicrosoftTeams -Credential (Get-Office365Credentials)
 
-foreach ($Item in $ADGroupToTeamMap) {
+$GroupMap = Read-MapFile
+if($null -eq $GroupMap) {
+    Write-Host "Critical Error: No data to sync."
+    exit 1
+}
+
+foreach ($Item in $GroupMap) {
     # Get Active Directory group and members.
-    $ADGroup = Get-ADGroup $Item.AD_Group
+    $ADGroup = Get-ADGroup $Item.ADGroup
     $ADGroupMembers = $ADGroup | Get-ADGroupMember | Get-ADUser | Select-Object UserPrincipalName
     Write-Host $ADGroup
     Write-Host $ADGroupMembers
 
     # Check to see if Active Directory group maps to a Team.
-    $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.MS_Team}
+    $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.MicrosoftTeam}
     if ($null -eq $Team) {
-        Write-Host "Team: " $Item.MS_Team " does not exist or Service Account is not owner"
+        Write-Host "Team: " $Item.MicrosoftTeam " does not exist or Service Account is not owner"
         break	
     }
     else {
