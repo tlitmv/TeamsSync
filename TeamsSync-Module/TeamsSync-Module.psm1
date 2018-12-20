@@ -66,9 +66,24 @@ function Assert-ActiveDirectoryModuleInstalled {
 }
 
 function Assert-Office365Connected {
-    Get-MsolDomain -ErrorAction SilentlyContinue | Out-Null
-    $result = $?
-    return $result
+    if ($null -eq $Script:Office365Session) {
+        return $false
+    }
+    elseif (($Script:Office365Session.State -eq "Closed") -or ($Script.Office365Session.Availability -eq "None")) {
+        return $false   
+    }
+    else {
+        return $true
+    }
+}
+
+function Assert-TeamsConnected {
+    if ($null -eq $Script:TeamsConnected) {
+        return $false
+    }
+    else {
+        return $Script:TeamsConnected
+    }
 }
 
 function Read-Office365Credentials {
@@ -93,23 +108,30 @@ function New-TeamFromOffice365Group {
         [Parameter(Mandatory = $true)]
         [string] $Email
     )
-    if (-not (Assert-TeamModuleExists)) {
+    if (-not (Assert-TeamsModuleExists)) {
         Write-Host "Critical Error: Unable to install Microsoft Teams module."
     }
-    New-Team -Template $Email
+    if (-not (Assert-TeamsConnected)) {
+        Import-TeamsSession
+    }
+    $Group = Get-Group -Identity $Email
+    New-Team -Group $Email
 }
 
 function New-Office365Group {
-    [Parameter(Mandatory = $true)]
-    [string] $Alias,
-    [Parameter(Mandatory = $true)]
-    [string] $Name,
-    [Parameter(Mandatory = $true)]
-    [string] $Email
+    param (
+        [Parameter(Mandatory = $true)]
+        [string] $Alias,
+        [Parameter(Mandatory = $true)]
+        [string] $Name,
+        [Parameter(Mandatory = $true)]
+        [string] $Email
+    )
     if (-not (Assert-Office365Connected)) {
         Import-Office365Session
     }
     New-UnifiedGroup -AccessType Private -Alias $Alias -DisplayName $Name -Name $Name -PrimarySmtpAddress $Email -Owner $Script:Username -RequireSenderAuthenticationEnabled $true
+    Set-UnifiedGroup -Identity $Name -HiddenFromAddressListsEnabled $true
 }
 
 function Install-Office365Credentials {
@@ -177,10 +199,32 @@ function Install-ActiveDirectoryModule {
     }
 }
 
+function Import-TeamsSession {
+    $Credential = Get-Office365Credentials
+    $TeamsSession = Connect-MicrosoftTeams -Credential $Credential
+    if ($null -ne $TeamsSession) {
+        $Script:TeamsConnected = $true
+    }
+    else {
+        $Script:TeamsConnected = $false
+    }
+}
+
+function Disconnect-TeamsSession {
+    if ($Script:TeamsConnected) {
+        Disconnect-MicrosoftTeams
+        $Script:TeamsConnected = $false
+    }
+}
+
 function Import-Office365Session {
     $Credential = Get-Office365Credentials
     $Script:Office365Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://ps.outlook.com/powershell/ -Credential $Credential -Authentication Basic -AllowRedirection -Name "Office365Session"
     Import-PSSession $Script:Office365Session
+}
+
+function Get-Office365Session {
+    return $Script:Office365Session
 }
 
 function Disconnect-Office365Session {
