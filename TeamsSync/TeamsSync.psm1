@@ -251,3 +251,15 @@ function Read-MapFile {
         }
     }
 }
+
+function Update-Office365GroupEmailAddress {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string] $Identity,
+        [Parameter(Mandatory = $true)]
+        [string] $NewEmail
+    )
+    if (Assert-Office365Connected) {
+        Set-UnifiedGroup -Identity $Identity -EmailAddresses:@{add = "SMTP:$Newmail"}
+    }
+}
