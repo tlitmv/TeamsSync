@@ -263,3 +263,14 @@ function Update-Office365GroupEmailAddress {
         Set-UnifiedGroup -Identity $Identity -EmailAddresses:@{add = "SMTP:$Newmail"}
     }
 }
+
+function Exit-TeamsSync {
+    Disconnect-Office365Session
+    Disconnect-TeamsSession
+}
+
+function Set-DefaultFile {
+    Set-UsernameFile -File upn.txt
+    Set-PwdFile -File pwd.txt
+    Set-MapFile -File map.csv
+}
