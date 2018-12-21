@@ -260,7 +260,7 @@ function Update-Office365GroupEmailAddress {
         [string] $NewEmail
     )
     if (Assert-Office365Connected) {
-        Set-UnifiedGroup -Identity $Identity -EmailAddresses:@{add = "SMTP:$Newmail"}
+        Set-UnifiedGroup -Identity $Identity -PrimarySmtpAddress $NewEmail
     }
 }
 
