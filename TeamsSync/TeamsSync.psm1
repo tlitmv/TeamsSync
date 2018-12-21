@@ -264,12 +264,22 @@ function Update-Office365GroupEmailAddress {
     }
 }
 
-function Exit-TeamsSync {
+function Invoke-TeamsSyncUnload {
     Disconnect-Office365Session
     Disconnect-TeamsSession
 }
 
-function Set-DefaultFile {
+function Invoke-TeamsSyncLoad {
+    Set-DefaultFiles
+    Import-Sessions
+}
+
+function Import-Sessions {
+    Import-Office365Session
+    Import-TeamsSession
+}
+
+function Set-DefaultFiles {
     Set-UsernameFile -File upn.txt
     Set-PwdFile -File pwd.txt
     Set-MapFile -File map.csv
