@@ -4,7 +4,7 @@ Param (
     [string] $MissingFromActiveDirctory
 )
 
-Import-Module .\TeamsSync-Module
+Import-Module TeamsSync
 Import-Module ActiveDirectory
 Import-Module MicrosoftTeams
 
