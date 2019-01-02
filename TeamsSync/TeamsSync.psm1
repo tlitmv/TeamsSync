@@ -62,11 +62,9 @@ function Assert-TeamsModuleExists {
 }
 
 function Assert-ActiveDirectoryModuleInstalled {
+    Import-Module ActiveDirectory
     if ($null -eq (Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"})) {
-        Import-Module ActiveDirectory
-        if ($null -eq (Get-Module | Where-Object {$_.Name -eq "ActiveDirectory"})) {
-            return Install-ActiveDirectoryModule
-        }
+        return Install-ActiveDirectoryModule
     }
     else {
         return $true
