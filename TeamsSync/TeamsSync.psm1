@@ -246,7 +246,7 @@ function Disconnect-Office365Session {
 function Read-MapFile {
     if (Assert-FilesSet) {
         if (Test-Path $Script:MapFile -PathType Leaf) {
-            $Script:MapContent = Import-Csv $Script:MapFile -Header ADGroup, MicrosoftTeam
+            $Script:MapContent = Import-Csv $Script:MapFile -Header ActiveDirectoryGroup, Team
             return $Script:MapContent;
         }
     }
@@ -283,4 +283,82 @@ function Set-DefaultFiles {
     Set-UsernameFile -File upn.txt
     Set-PwdFile -File pwd.txt
     Set-MapFile -File map.csv
+}
+
+function Invoke-TeamsSync {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $UserFile,
+        [Parameter(Mandatory = $true)]
+        [string]
+        $PassFile,
+        [Parameter(Mandatory = $true)]
+        [string]
+        $TeamsFile
+    )
+
+    Set-UsernameFile -File $UserFile
+    Set-PwdFile -File $PassFile
+    Set-MapFile -File $TeamsFile
+
+    if (-not (Assert-TeamsModuleExists)) {
+        Write-Host "Critical Error: Unable to install Microsoft Teams module."
+        exit 1
+    }
+
+    if (-not (Assert-ActiveDirectoryModuleInstalled)) {
+        Write-Host "Critical Error: Active Directory module missing."
+        exit 1
+    }
+
+    $GroupMap = Read-MapFile
+    if ($null -eq $GroupMap) {
+        Write-Host "Critical Error: Error reading map file."
+        exit 1
+    }
+
+    foreach ($Item in $GroupMap) {
+        $ActiveDirectoryGroup = Get-ADGroup $Item.ActiveDirectoryGroup
+        $ActiveDirectoryGroupMembers = $ActiveDirectoryGroup | Get-ADGroupMember | Get-ADUser | Select-Object UserPrincipalName
+        $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.Team}
+        if ($null -eq $Teams) {
+            Write-Host "Team: " $Item.Team " does not exist or account is not an owner."
+        }
+        else {
+            
+            $TeamMembers = Get-TeamUser -GroupId $Team.GroupId
+            $ActiveDirectoryOnlyUsers = try {
+                Compare-Object -DifferenceObject $ActiveDirectoryGroupMembers.UserPrincipalName -ReferenceObject $TeamMembers.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
+            }
+            catch {
+                Write-Host "No members in Active Directory group: " $ActiveDirectoryGroup.DisplayName "."
+            }
+
+            if (($null -ne $ActiveDirectoryOnlyUsers) -and ($ActiveDirectoryOnlyUsers.Count -ne 0)) {
+                foreach ($ActiveDirectoryOnlyUser in $ActiveDirectoryOnlyUsers) {
+                    Write-Host "Adding user: " $ActiveDirectoryOnlyUser.InputObject " to Team: " $Team.DisplayName
+                    Add-TeamUser -GroupId $Team.GroupId -User $ActiveDirectoryOnlyUser.InputObject
+                }
+            }
+
+            $TeamOnlyUsers = try {
+                Compare-Object -DifferenceObject $ActiveDirectoryGroupMembers.UserPrincipalName -ReferenceObject $Team.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "<="}
+            }
+            catch {}
+
+            if (($null -ne $TeamOnlyUsers) -and ($TeamOnlyUsers.Count -ne 0)) {
+                foreach ($TeamOnlyUser in $TeamOnlyUsers) {
+                    $TeamUserInfo = Get-TeamUser -GroupId $TeamInfo.groupid | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
+                    if($TeamUserInfo.Role -eq "Owner") {
+                        Write-Host "Unable to remove owner: " $TeamOnlyUser.InputObject " from team: " $Item.Team "."
+                        break
+                    }
+                    Write-Host "Removing User: " $TeamOnlyUser.InputObject " from Team: " $Team.DisplayName
+                    Remove-TeamUser -GroupId $TeamInfo.groupid -User $TeamOnlyUser.InputObject
+                }
+            }
+        }
+    }
+
 }

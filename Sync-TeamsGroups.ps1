@@ -40,7 +40,7 @@ if (-not (Assert-ActiveDirectoryModuleInstalled)) {
 }
 
 # Make sure Office 365 credentials are stored
-if(-not (Assert-Office365CredentialsExist)) {
+if (-not (Assert-Office365CredentialsExist)) {
     Write-Host "Critical Error: Unable to store Office 365 credentials."
     exit 1
 }
@@ -49,7 +49,7 @@ if(-not (Assert-Office365CredentialsExist)) {
 Connect-MicrosoftTeams -Credential (Get-Office365Credentials)
 
 $GroupMap = Read-MapFile
-if($null -eq $GroupMap) {
+if ($null -eq $GroupMap) {
     Write-Host "Critical Error: No data to sync."
     exit 1
 }
@@ -62,20 +62,21 @@ foreach ($Item in $GroupMap) {
     Write-Host $ADGroupMembers
 
     # Check to see if Active Directory group maps to a Team.
-    $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.MicrosoftTeam}
+    $Team = Get-UnifiedGroup -Identity $Item.Team
     if ($null -eq $Team) {
-        Write-Host "Team: " $Item.MicrosoftTeam " does not exist or Service Account is not owner"
-        break	
+        Write-Host "Team: " $Item.MicrosoftTeam " does not exist or Service Account is not owner"	
     }
     else {
         # Get Team users
-        $TeamUsers = Get-TeamUser -GroupId $Team.GroupId
+        $TeamUsers = Get-UnifiedGroupLinks -Identity $Iteam.Team -LinkType Members
 
         # Gather a list of Active Directory users that do not belong to the Team
         $ADOnlyUsers = try {
-            Compare-Object -DifferenceObject $ADGroupMembers.UserPrincipalName -ReferenceObject $TeamUsers.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
+            Compare-Object -DifferenceObject $ADGroupMembers.UserPrincipalName -ReferenceObject $TeamUsers.PrimarySMTPAddress -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
         }
-        catch { Write-Host "Please add members to group " $ADGroup.Name ". Please make sure the owner is one of them." }
+        catch { 
+            Write-Host "Please add members to group " $ADGroup.Name ". Please make sure the owner is one of them."
+        }
 
         # Add missing Active Directory users to Team
         foreach ($ADOnlyUser in $ADOnlyUsers) {
