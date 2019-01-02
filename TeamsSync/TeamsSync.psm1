@@ -85,11 +85,9 @@ function Assert-Office365Connected {
 
 function Assert-TeamsConnected {
     if ($null -eq $Script:TeamsConnected) {
-        return $false
+        Import-TeamsSession        
     }
-    else {
-        return $Script:TeamsConnected
-    }
+    return $Script:TeamsConnected
 }
 
 function Read-Office365Credentials {
@@ -305,6 +303,11 @@ function Invoke-TeamsSync {
         exit 1
     }
 
+    if (-not (Assert-TeamsConnected)) {
+        Write-Host "Critical Error: Unable to connect to Microsoft Teams."
+        exit 1
+    }
+
     if (-not (Assert-ActiveDirectoryModuleInstalled)) {
         Write-Host "Critical Error: Active Directory module missing."
         exit 1
@@ -348,7 +351,7 @@ function Invoke-TeamsSync {
             if (($null -ne $TeamOnlyUsers) -and ($TeamOnlyUsers.Count -ne 0)) {
                 foreach ($TeamOnlyUser in $TeamOnlyUsers) {
                     $TeamUserInfo = Get-TeamUser -GroupId $TeamInfo.groupid | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
-                    if($TeamUserInfo.Role -eq "Owner") {
+                    if ($TeamUserInfo.Role -eq "Owner") {
                         Write-Host "Unable to remove owner: " $TeamOnlyUser.InputObject " from team: " $Item.Team "."
                         break
                     }
