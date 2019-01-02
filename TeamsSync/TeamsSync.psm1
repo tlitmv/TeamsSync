@@ -278,7 +278,7 @@ function Import-Sessions {
 function Set-DefaultFiles {
     Set-UsernameFile -File upn.txt
     Set-PwdFile -File pwd.txt
-    Set-MapFile -File map.csv
+    Set-MapFile -File teams.csv
 }
 
 function Invoke-TeamsSync {
@@ -320,14 +320,14 @@ function Invoke-TeamsSync {
     }
 
     foreach ($Item in $GroupMap) {
+        Write-Host $Item
         $ActiveDirectoryGroup = Get-ADGroup $Item.ActiveDirectoryGroup
-        $ActiveDirectoryGroupMembers = $ActiveDirectoryGroup | Get-ADGroupMember | Get-ADUser | Select-Object UserPrincipalName
+        $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName
         $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.Team}
-        if ($null -eq $Teams) {
+        if ($null -eq $Team) {
             Write-Host "Team: " $Item.Team " does not exist or account is not an owner."
         }
-        else {
-            
+        else {            
             $TeamMembers = Get-TeamUser -GroupId $Team.GroupId
             $ActiveDirectoryOnlyUsers = try {
                 Compare-Object -DifferenceObject $ActiveDirectoryGroupMembers.UserPrincipalName -ReferenceObject $TeamMembers.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
@@ -362,4 +362,24 @@ function Invoke-TeamsSync {
         }
     }
 
+}
+
+function Get-ADGroupMembers {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Group
+    )
+    $Members = Get-ADGroupMember -Identity $Group
+    $Results = @()
+    foreach ($Member in $Members) {
+        if ($Member.objectClass -eq "group") {
+            $NestedMembers = Get-ADGroupMembers -Group $Member.SamAccountName
+            $Results += $NestedMembers
+        }
+        else {
+            $Results += $Member
+        }
+    }
+    return $Results
 }
