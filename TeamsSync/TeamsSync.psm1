@@ -322,13 +322,13 @@ function Invoke-TeamsSync {
     foreach ($Item in $GroupMap) {
         Write-Host $Item
         $ActiveDirectoryGroup = Get-ADGroup $Item.ActiveDirectoryGroup
-        $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName
+        $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object -Unique
         $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.Team}
         if ($null -eq $Team) {
             Write-Host "Team: " $Item.Team " does not exist or account is not an owner."
         }
         else {            
-            $TeamMembers = Get-TeamUser -GroupId $Team.GroupId
+            $TeamMembers = Get-TeamUser -GroupId $Team.GroupId | Select-Object User | Sort-Object -Property User
             $ActiveDirectoryOnlyUsers = try {
                 Compare-Object -DifferenceObject $ActiveDirectoryGroupMembers.UserPrincipalName -ReferenceObject $TeamMembers.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
             }
