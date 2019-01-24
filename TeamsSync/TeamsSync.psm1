@@ -90,6 +90,23 @@ function Assert-TeamsConnected {
     return $Script:TeamsConnected
 }
 
+function Assert-All {
+    if (-not (Assert-TeamsModuleExists)) {
+        Write-Host "Critical Error: Unable to install Microsoft Teams module."
+        exit 1
+    }
+
+    if (-not (Assert-TeamsConnected)) {
+        Write-Host "Critical Error: Unable to connect to Microsoft Teams."
+        exit 1
+    }
+
+    if (-not (Assert-ActiveDirectoryModuleInstalled)) {
+        Write-Host "Critical Error: Active Directory module missing."
+        exit 1
+    }    
+}
+
 function Read-Office365Credentials {
     $Script:Username = Get-Content $Script:UsernameFile
     $Script:Password = Get-Content $Script:PwdFile | ConvertTo-SecureString
@@ -281,6 +298,73 @@ function Set-DefaultFiles {
     Set-MapFile -File teams.csv
 }
 
+function Invoke-SingleTeamSync {
+    param (
+        # User file
+        [Parameter(Mandatory = $true)]
+        [string]
+        $UserFile,
+        # Password file
+        [Parameter(Mandatory = $true)]
+        [string]
+        $PassFile,
+        # Active Directory Group
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ADGroup,
+        # Team
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Team
+    )
+
+    Set-UsernameFile -File $UserFile
+    Set-PwdFile -File $PassFile
+
+    Assert-All
+    
+    $ActiveDirectoryGroup = Get-ADGroup $ADGroup
+    $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object -Unique
+    $Team = Get-Team | Where-Object {$_.DisplayName -like $Team}
+    if ($null -eq $Team) {
+        Write-Host "Team: " $Team " does not exist or account is not an owner."
+    }
+    else {            
+        $TeamMembers = Get-TeamUser -GroupId $Team.GroupId | Select-Object User | Sort-Object -Property User
+        $ActiveDirectoryOnlyUsers = try {
+            Compare-Object -DifferenceObject $ActiveDirectoryGroupMembers.UserPrincipalName -ReferenceObject $TeamMembers.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "=>"}
+        }
+        catch {
+            Write-Host "No members in Active Directory group: " $ActiveDirectoryGroup.DisplayName "."
+        }
+
+        if (($null -ne $ActiveDirectoryOnlyUsers) -and ($ActiveDirectoryOnlyUsers.Count -ne 0)) {
+            foreach ($ActiveDirectoryOnlyUser in $ActiveDirectoryOnlyUsers) {
+                Write-Host "Adding user: " $ActiveDirectoryOnlyUser.InputObject " to Team: " $Team.DisplayName
+                Add-TeamUser -GroupId $Team.GroupId -User $ActiveDirectoryOnlyUser.InputObject
+            }
+        }
+
+        $TeamOnlyUsers = try {
+            Compare-Object -DifferenceObject $ActiveDirectoryGroupMembers.UserPrincipalName -ReferenceObject $Team.User -IncludeEqual -ErrorAction SilentlyContinue | Where-Object {$_.SideIndicator -eq "<="}
+        }
+        catch {}
+
+        if (($null -ne $TeamOnlyUsers) -and ($TeamOnlyUsers.Count -ne 0)) {
+            foreach ($TeamOnlyUser in $TeamOnlyUsers) {
+                $TeamUserInfo = Get-TeamUser -GroupId $Team.GroupId | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
+                if ($TeamUserInfo.Role -eq "Owner") {
+                    Write-Host "Unable to remove owner: " $TeamOnlyUser.InputObject " from team: " $Team "."
+                    break
+                }
+                Write-Host "Removing User: " $TeamOnlyUser.InputObject " from Team: " $Team.DisplayName
+                Remove-TeamUser -GroupId $Team.GroupId -User $TeamOnlyUser.InputObject
+            }
+        }
+    }
+    Disconnect-TeamsSession
+}
+
 function Invoke-TeamsSync {
     param(
         [Parameter(Mandatory = $true)]
@@ -298,20 +382,7 @@ function Invoke-TeamsSync {
     Set-PwdFile -File $PassFile
     Set-MapFile -File $TeamsFile
 
-    if (-not (Assert-TeamsModuleExists)) {
-        Write-Host "Critical Error: Unable to install Microsoft Teams module."
-        exit 1
-    }
-
-    if (-not (Assert-TeamsConnected)) {
-        Write-Host "Critical Error: Unable to connect to Microsoft Teams."
-        exit 1
-    }
-
-    if (-not (Assert-ActiveDirectoryModuleInstalled)) {
-        Write-Host "Critical Error: Active Directory module missing."
-        exit 1
-    }
+    Assert-All
 
     $GroupMap = Read-MapFile
     if ($null -eq $GroupMap) {
@@ -350,13 +421,13 @@ function Invoke-TeamsSync {
 
             if (($null -ne $TeamOnlyUsers) -and ($TeamOnlyUsers.Count -ne 0)) {
                 foreach ($TeamOnlyUser in $TeamOnlyUsers) {
-                    $TeamUserInfo = Get-TeamUser -GroupId $TeamInfo.groupid | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
+                    $TeamUserInfo = Get-TeamUser -GroupId $Team.GroupId | Where-Object {$_.User -like $TeamOnlyUser.InputObject}
                     if ($TeamUserInfo.Role -eq "Owner") {
                         Write-Host "Unable to remove owner: " $TeamOnlyUser.InputObject " from team: " $Item.Team "."
                         break
                     }
                     Write-Host "Removing User: " $TeamOnlyUser.InputObject " from Team: " $Team.DisplayName
-                    Remove-TeamUser -GroupId $TeamInfo.groupid -User $TeamOnlyUser.InputObject
+                    Remove-TeamUser -GroupId $Team.GroupId -User $TeamOnlyUser.InputObject
                 }
             }
         }
