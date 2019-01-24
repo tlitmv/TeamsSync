@@ -361,6 +361,7 @@ function Invoke-TeamsSync {
             }
         }
     }
+    Disconnect-TeamsSession
 
 }
 
