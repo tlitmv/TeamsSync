@@ -300,14 +300,6 @@ function Set-DefaultFiles {
 
 function Invoke-SingleTeamSync {
     param (
-        # User file
-        [Parameter(Mandatory = $true)]
-        [string]
-        $UserFile,
-        # Password file
-        [Parameter(Mandatory = $true)]
-        [string]
-        $PassFile,
         # Active Directory Group
         [Parameter(Mandatory = $true)]
         [string]
@@ -315,19 +307,18 @@ function Invoke-SingleTeamSync {
         # Team
         [Parameter(Mandatory = $true)]
         [string]
-        $Team
+        $TeamName
     )
 
-    Set-UsernameFile -File $UserFile
-    Set-PwdFile -File $PassFile
+    Set-DefaultFiles
 
     Assert-All
     
     $ActiveDirectoryGroup = Get-ADGroup $ADGroup
     $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object UserPrincipalName -Unique
-    $Team = Get-Team | Where-Object {$_.DisplayName -like $Team}
+    $Team = Get-Team | Where-Object {$_.DisplayName -like $TeamName}
     if ($null -eq $Team) {
-        Write-Host "Team: " $Team " does not exist or account is not an owner."
+        Write-Host "Team: " $TeamName " does not exist or account is not an owner."
     }
     else {            
         $TeamMembers = Get-TeamUser -GroupId $Team.GroupId | Select-Object User | Sort-Object -Property User
