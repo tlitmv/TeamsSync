@@ -324,7 +324,7 @@ function Invoke-SingleTeamSync {
     Assert-All
     
     $ActiveDirectoryGroup = Get-ADGroup $ADGroup
-    $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object -Unique
+    $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object UserPrincipalName -Unique
     $Team = Get-Team | Where-Object {$_.DisplayName -like $Team}
     if ($null -eq $Team) {
         Write-Host "Team: " $Team " does not exist or account is not an owner."
@@ -393,7 +393,7 @@ function Invoke-TeamsSync {
     foreach ($Item in $GroupMap) {
         Write-Host $Item
         $ActiveDirectoryGroup = Get-ADGroup $Item.ActiveDirectoryGroup
-        $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object -Unique
+        $ActiveDirectoryGroupMembers = Get-ADGroupMembers -Group $ActiveDirectoryGroup.SamAccountName | Get-ADUser | Select-Object UserPrincipalName | Sort-Object UserPrincipalName | Select-Object UserPrincipalName -Unique
         $Team = Get-Team | Where-Object {$_.DisplayName -like $Item.Team}
         if ($null -eq $Team) {
             Write-Host "Team: " $Item.Team " does not exist or account is not an owner."
